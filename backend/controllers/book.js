@@ -116,40 +116,6 @@ exports.getAllBook = (req, res, next) => {
 
 
 
-  // const sharp = require('sharp');
-
-// exports.createBook = async (req, res, next) => {
-//   console.log(req.body);
-//   const bookObject = JSON.parse(req.body.book);
-//   delete bookObject._id;
-//   delete bookObject._userId;
-
-//   const imagePath = `${req.file.destination}/${req.file.filename}`;
-//   try {
-//     const resizedImageBuffer = await sharp(imagePath)
-//       .resize({ width: 800 })
-//       .toBuffer();
-//     const resizedImagePath = `${req.file.destination}/resized_${req.file.filename}`;
-//     await fs.promises.writeFile(resizedImagePath, resizedImageBuffer);
-
-//     const book = new Book({
-//       ...bookObject,
-//       userId: req.auth.userId,
-//       imageUrl: `${req.protocol}://${req.get('host')}/images/${
-//         req.file.filename
-//       }`,
-//     });
-
-//     console.log(book);
-//     await book.save();
-
-//     res.status(201).json({ message: 'Objet enregistré !' });
-//   } catch (error) {
-//     console.error('Erreur lors de la création du livre :', error);
-//     res.status(400).json({ error });
-//   }
-// };
-
 
 // exports.addRating = async (req, res, next) => {
 //   const ratingObject = req.body;
