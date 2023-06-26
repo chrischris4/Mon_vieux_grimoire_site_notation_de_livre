@@ -1,11 +1,14 @@
 const Book = require('../models/books');
 const fs = require('fs');
 
+
 exports.createBook = async (req, res, next) => {
   console.log(req.body);
   const bookObject = JSON.parse(req.body.book);
   delete bookObject._id;
   delete bookObject._userId;
+
+
 
     const book = new Book({
       ...bookObject,
@@ -19,6 +22,8 @@ exports.createBook = async (req, res, next) => {
     .then(() => { res.status(201).json({message: 'Objet enregistré !'})})
     .catch(error => { res.status(400).json( { error })})
   };
+
+
 
 exports.getOneBook = (req, res, next) => {
   Book.findOne({
@@ -35,30 +40,40 @@ exports.getOneBook = (req, res, next) => {
 };
 
 exports.modifyBook = (req, res, next) => {
-
   const bookObject = req.file
-    ? 
-      {
+    ? {
         ...JSON.parse(req.body.book),
-        imageUrl: `${req.protocol}://${req.get('host')}/images/${
-          req.file.filename
-        }`,
+        imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`,
       }
     : { ...req.body };
 
   delete bookObject._userId;
+
   Book.findOne({ _id: req.params.id })
     .then((book) => {
       if (book.userId != req.auth.userId) {
         res.status(401).json({ message: 'Not authorized' });
       } else {
-        Book.updateOne(
-          { _id: req.params.id },
-          { ...bookObject, _id: req.params.id },
-          { new: true }
-        )
-          .then(() => res.status(200).json({ message: 'Objet modifié!' }))
-          .catch((error) => res.status(401).json({ error }));
+        const previousImageFilename = book.imageUrl.split('/images/')[1];
+        const newImageFilename = req.file && req.file.filename;
+
+        book.imageUrl = newImageFilename
+          ? `${req.protocol}://${req.get('host')}/images/${newImageFilename}`
+          : '';
+
+        book
+          .save()
+          .then(() => {
+            if (previousImageFilename && previousImageFilename !== newImageFilename) {
+              fs.unlink(`images/${previousImageFilename}`, (error) => {
+                if (error) {
+                  console.log('Failed to delete previous image:', error);
+                }
+              });
+            }
+            res.status(200).json({ message: 'Objet modifié!' });
+          })
+          .catch((error) => res.status(500).json({ error }));
       }
     })
     .catch((error) => {
@@ -98,5 +113,77 @@ exports.getAllBook = (req, res, next) => {
       });
     });
 };
+
+
+
+  // const sharp = require('sharp');
+
+// exports.createBook = async (req, res, next) => {
+//   console.log(req.body);
+//   const bookObject = JSON.parse(req.body.book);
+//   delete bookObject._id;
+//   delete bookObject._userId;
+
+//   const imagePath = `${req.file.destination}/${req.file.filename}`;
+//   try {
+//     const resizedImageBuffer = await sharp(imagePath)
+//       .resize({ width: 800 })
+//       .toBuffer();
+//     const resizedImagePath = `${req.file.destination}/resized_${req.file.filename}`;
+//     await fs.promises.writeFile(resizedImagePath, resizedImageBuffer);
+
+//     const book = new Book({
+//       ...bookObject,
+//       userId: req.auth.userId,
+//       imageUrl: `${req.protocol}://${req.get('host')}/images/${
+//         req.file.filename
+//       }`,
+//     });
+
+//     console.log(book);
+//     await book.save();
+
+//     res.status(201).json({ message: 'Objet enregistré !' });
+//   } catch (error) {
+//     console.error('Erreur lors de la création du livre :', error);
+//     res.status(400).json({ error });
+//   }
+// };
+
+
+// exports.addRating = async (req, res, next) => {
+//   const ratingObject = req.body;
+//   ratingObject.grade = ratingObject.rating;
+//   delete ratingObject.rating;
+
+//   try {
+//     const updatedBook = await Book.findOneAndUpdate(
+//       { _id: req.params.id },
+//       { $push: { ratings: ratingObject }, $inc: { totalRatings: 1 } },
+//       { new: true }
+//     );
+
+//     let averageRates = 0;
+//     for (let i = 0; i < updatedBook.ratings.length; i++) {
+//       averageRates += updatedBook.ratings[i].grade;
+//     }
+//     averageRates /= updatedBook.ratings.length;
+
+//     const bookWithAverageRating = await Book.findOneAndUpdate(
+//       { _id: req.params.id },
+//       { averageRating: averageRates },
+//       { new: true }
+//     );
+
+//     console.log(bookWithAverageRating);
+
+//     res.status(201).json({
+//       book: bookWithAverageRating,
+//       _id: req.params.id,
+//     });
+//   } catch (error) {
+//     res.status(401).json({ error: error.message });
+//   }
+// };
 
 
