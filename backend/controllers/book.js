@@ -54,45 +54,55 @@ exports.getOneBook = (req, res, next) => {
 		});
 };
 
-exports.modifyBook = (req, res, next) => {
-	const bookObject = req.file
-		?
-			{
-				...JSON.parse(req.body.book),
-				imageUrl: `${req.protocol}://${req.get('host')}/images/${
-					req.file.filename
-				}`,
-			}
+exports.modifyBook = async (req, res, next) => {
+	try {
+	  const bookObject = req.file
+		? {
+			...JSON.parse(req.body.book),
+			imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`,
+		  }
 		: { ...req.body };
-	delete bookObject._userId;
-	Book.findOne({ _id: req.params.id })
-		.then((book) => {
-			if (book.userId != req.auth.userId) {
-				res.status(401).json({ message: 'Not authorized' });
-			} else {
-				// Deleting previous image if a file has been uploaded
-				console.log(book.imageUrl.split('/images/')[1]);
-				if(req.file) {
-					fs.unlink(`images/${book.imageUrl.split('/images/')[1]}`, (error) => {
-						if(error) {
-							console.log('Failed to delete previous image:', error);
-						}
-					});
-				}
-				// Saving the new data
-				Book.updateOne(
-					{ _id: req.params.id },
-					{ ...bookObject, _id: req.params.id },
-					{ new: true }
-				)
-				.then(() => res.status(200).json({ message: 'Objet modifié!' }))
-				.catch((error) => res.status(401).json({ error }));
-			}
-		})
-		.catch((error) => {
-			res.status(400).json({ error });
+	  delete bookObject._userId;
+  
+	  const book = await Book.findOne({ _id: req.params.id });
+	  if (book.userId != req.auth.userId) {
+		return res.status(401).json({ message: 'Not authorized' });
+	  }
+  
+	  if (req.file) {
+		// Deleting previous image if a file has been uploaded
+		console.log(book.imageUrl.split('/images/')[1]);
+		fs.unlink(`images/${book.imageUrl.split('/images/')[1]}`, (error) => {
+		  if (error) {
+			console.log('Failed to delete previous image:', error);
+		  }
 		});
-};
+  
+		const originalFilePath = req.file.path;
+		const newFilePath = `images/resized_${req.file.filename}`;
+  
+		await sharp(originalFilePath)
+		  .resize(500, 500)
+		  .webp({ quality: 90 })
+		  .toFile(newFilePath);
+  
+		fs.unlink(originalFilePath, (error) => {
+		  if (error) {
+			console.log('Échec de la suppression de l\'image d\'origine :', error);
+		  }
+		});
+  
+		bookObject.imageUrl = `${req.protocol}://${req.get('host')}/${newFilePath}`;
+	  }
+  
+	  await Book.updateOne({ _id: req.params.id }, { ...bookObject, _id: req.params.id }, { new: true });
+  
+	  res.status(200).json({ message: 'Objet modifié!' });
+	} catch (error) {
+	  console.error('Une erreur s\'est produite lors de la modification du livre :', error);
+	  res.status(500).json({ error: 'Erreur lors de la modification du livre' });
+	}
+  };
 
 exports.deleteBook = (req, res, next) => {
 	Book.findOne({ _id: req.params.id })
