@@ -2,6 +2,7 @@ const Book = require('../models/books');
 const fs = require('fs');
 const sharp = require('sharp');
 
+
 exports.createBook = async (req, res, next) => {
 	try {
 	  console.log(req.body);
@@ -11,22 +12,10 @@ exports.createBook = async (req, res, next) => {
 	  const book = new Book({
 		...bookObject,
 		userId: req.auth.userId,
-		imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`,
+		imageUrl: `${req.protocol}://${req.get('host')}/images/resized_${req.file.compressedFilename}`,
 	  });
   
-	  const originalFilePath = req.file.path;
-	  const newFilePath = `images/resized_${req.file.filename}`;
-  
-	  await sharp(originalFilePath)
-		.resize(500, 500)
-		.webp({ quality: 90 })
-		.toFile(newFilePath);
-  
-	  fs.unlink(originalFilePath, (error) => {
-		if (error) {
-		  console.log('Échec de la suppression de l\'image d\'origine :', error);
-		}
-	  });
+	  const newFilePath = req.file.compressedFilePath;
   
 	  book.imageUrl = `${req.protocol}://${req.get('host')}/${newFilePath}`;
   
@@ -37,8 +26,7 @@ exports.createBook = async (req, res, next) => {
 	  console.error('Une erreur s\'est produite lors du redimensionnement de l\'image :', error);
 	  res.status(500).json({ error: 'Erreur lors du traitement de l\'image' });
 	}
-  };
-  
+};
 
 exports.getOneBook = (req, res, next) => {
 	Book.findOne({
@@ -53,13 +41,12 @@ exports.getOneBook = (req, res, next) => {
 			});
 		});
 };
-
 exports.modifyBook = async (req, res, next) => {
 	try {
 	  const bookObject = req.file
 		? {
 			...JSON.parse(req.body.book),
-			imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`,
+			imageUrl: `${req.protocol}://${req.get('host')}/images/resized_${req.file.compressedFilename}`,
 		  }
 		: { ...req.body };
 	  delete bookObject._userId;
@@ -70,32 +57,22 @@ exports.modifyBook = async (req, res, next) => {
 	  }
   
 	  if (req.file) {
-		// Deleting previous image if a file has been uploaded
-		console.log(book.imageUrl.split('/images/')[1]);
-		fs.unlink(`images/${book.imageUrl.split('/images/')[1]}`, (error) => {
-		  if (error) {
-			console.log('Failed to delete previous image:', error);
-		  }
-		});
+		// Supprimer l'image précédente si un fichier a été téléchargé
+		const previousImagePath = book.imageUrl.split('/images/')[1];
+		if (previousImagePath) {
+		  fs.unlink(`images/${previousImagePath}`, (error) => {
+			if (error) {
+			  console.log('Failed to delete previous image:', error);
+			}
+		  });
+		}
   
-		const originalFilePath = req.file.path;
-		const newFilePath = `images/resized_${req.file.filename}`;
-  
-		await sharp(originalFilePath)
-		  .resize(500, 500)
-		  .webp({ quality: 90 })
-		  .toFile(newFilePath);
-  
-		fs.unlink(originalFilePath, (error) => {
-		  if (error) {
-			console.log('Échec de la suppression de l\'image d\'origine :', error);
-		  }
-		});
+		const newFilePath = `images/resized_${req.file.compressedFilename}`;
   
 		bookObject.imageUrl = `${req.protocol}://${req.get('host')}/${newFilePath}`;
 	  }
   
-	  await Book.updateOne({ _id: req.params.id }, { ...bookObject, _id: req.params.id }, { new: true });
+	  await Book.updateOne({ _id: req.params.id }, { ...bookObject, _id: req.params.id });
   
 	  res.status(200).json({ message: 'Objet modifié!' });
 	} catch (error) {
