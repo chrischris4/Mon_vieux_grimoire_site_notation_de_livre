@@ -10,10 +10,10 @@ exports.createBook = async (req, res, next) => {
 	  const book = new Book({
 		...bookObject,
 		userId: req.auth.userId,
-		imageUrl: `${req.protocol}://${req.get('host')}/images/resized_${req.file.compressedFilename}`,
+		imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`,
 	  });
   
-	  const newFilePath = `images/resized_${req.file.compressedFilename}`;
+	  const newFilePath = `images/${req.file.compressedFilename}`;
   
 	  book.imageUrl = `${req.protocol}://${req.get('host')}/${newFilePath}`;
   
@@ -65,7 +65,7 @@ exports.modifyBook = async (req, res, next) => {
 		  });
 		}
   
-		const newFilePath = `images/resized_${req.file.compressedFilename}`;
+		const newFilePath = `images/${req.file.compressedFilename}`;
   
 		bookObject.imageUrl = `${req.protocol}://${req.get('host')}/${newFilePath}`;
 	  }
