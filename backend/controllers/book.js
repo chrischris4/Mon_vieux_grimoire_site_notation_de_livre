@@ -1,7 +1,5 @@
 const Book = require('../models/books');
 const fs = require('fs');
-const sharp = require('sharp');
-
 
 exports.createBook = async (req, res, next) => {
 	try {
@@ -15,7 +13,7 @@ exports.createBook = async (req, res, next) => {
 		imageUrl: `${req.protocol}://${req.get('host')}/images/resized_${req.file.compressedFilename}`,
 	  });
   
-	  const newFilePath = req.file.compressedFilePath;
+	  const newFilePath = `images/resized_${req.file.compressedFilename}`;
   
 	  book.imageUrl = `${req.protocol}://${req.get('host')}/${newFilePath}`;
   
@@ -26,7 +24,7 @@ exports.createBook = async (req, res, next) => {
 	  console.error('Une erreur s\'est produite lors du redimensionnement de l\'image :', error);
 	  res.status(500).json({ error: 'Erreur lors du traitement de l\'image' });
 	}
-};
+  };
 
 exports.getOneBook = (req, res, next) => {
 	Book.findOne({
@@ -46,7 +44,7 @@ exports.modifyBook = async (req, res, next) => {
 	  const bookObject = req.file
 		? {
 			...JSON.parse(req.body.book),
-			imageUrl: `${req.protocol}://${req.get('host')}/images/resized_${req.file.compressedFilename}`,
+			imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.compressedFilename}`,
 		  }
 		: { ...req.body };
 	  delete bookObject._userId;
